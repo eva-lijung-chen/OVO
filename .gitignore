@@ -1,4 +1,26 @@
-ovoslam/submodules/segment-anything-langsplat
-__pycache__
-*.ipynb
-data/
+# 忽略 Python 編譯檔
+__pycache__/
+*.py[cod]
+
+# 忽略虛擬環境
+.venv/
+env/
+venv/
+
+# 忽略巨大的數據資料夾 (重要！！！)
+data/input/
+data/output/
+data/working/
+
+# 忽略權重檔
+*.ckpt
+*.pth
+*.pt
+
+# 忽略 IDE 設定
+.vscode/
+.idea/
+
+# 忽略其他暫存檔
+wandb/
+*.log

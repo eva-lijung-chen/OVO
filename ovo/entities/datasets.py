@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 import cv2
+import glob
 import numpy as np
 import torch
 import json
@@ -228,6 +229,165 @@ class Matterport(BaseDataset):
         return index, color_data, depth_data, self.poses[index]
 
 
+
+# class Custom(BaseDataset):
+#     def __init__(self, dataset_config: dict):
+#         super().__init__(dataset_config)
+#         self.color_paths = sorted(
+#             list((self.dataset_path).glob("rgb*.png")))
+#         self.depth_paths = sorted(
+#             list((self.dataset_path).glob("depth*.png")))
+#         self.load_poses(self.dataset_path / "traj.txt")
+#         print(f"Loaded {len(self.color_paths)} frames")
+
+#     def load_poses(self, path):
+#         self.poses = []
+#         with open(path, "r") as f:
+#             lines = f.readlines()
+#         for line in lines:
+#             c2w = np.array(list(map(float, line.split()))).reshape(4, 4)
+#             self.poses.append(c2w.astype(np.float32))
+
+#     def __getitem__(self, index):
+#         color_data = cv2.imread(str(self.color_paths[index]))
+#         color_data = cv2.resize(color_data, (self.width, self.height), interpolation=cv2.INTER_LINEAR)# added
+#         color_data = color_data.astype(np.uint8)# added
+#         color_data = cv2.cvtColor(color_data, cv2.COLOR_BGR2RGB)
+#         depth_data = cv2.imread(
+#             str(self.depth_paths[index]), cv2.IMREAD_UNCHANGED)
+#         depth_data = cv2.resize(depth_data.astype(float), (self.width, self.height), interpolation=cv2.INTER_NEAREST)
+#         depth_data = depth_data.astype(np.float32) / self.depth_scale
+
+#         return index, color_data, depth_data, self.poses[index]
+
+class Custom(BaseDataset):
+    def __init__(self, dataset_config: dict):
+        super().__init__(dataset_config)
+        
+        self.color_paths = sorted(list(self.dataset_path.glob("rgb_*.png")))
+        self.depth_paths = sorted(list(self.dataset_path.glob("depth_*.png")))
+        self.pose_paths = sorted(list(self.dataset_path.glob("pose_*.json")))
+
+        if len(self.color_paths) == 0:
+            if (self.dataset_path / "images").exists():
+                self.color_paths = sorted(list((self.dataset_path / "images").glob("*.jpg"))) + \
+                                  sorted(list((self.dataset_path / "images").glob("*.png")))
+            else:
+                self.color_paths = sorted(list(self.dataset_path.glob("*.jpg"))) + \
+                                  sorted(list(self.dataset_path.glob("*.png")))
+
+        if len(self.color_paths) == 0:
+             raise FileNotFoundError(f"No images found in {self.dataset_path}")
+
+        print(f"Loaded {len(self.color_paths)} frames from Custom Dataset")
+        
+        if len(self.pose_paths) > 0:
+            print(f"Found {len(self.pose_paths)} JSON pose files. Loading...")
+            self.load_poses_from_json()
+        # elif (self.dataset_path / "traj.txt").exists():
+        #     print("Found traj.txt. Loading...")
+        #     self.load_poses(self.dataset_path / "traj.txt")
+        else:
+            print("Warning: No poses found. Returning Identity poses.")
+            self.poses = [np.eye(4, dtype=np.float32) for _ in range(len(self.color_paths))]
+
+    def load_poses_from_json(self):
+        self.poses = []
+        for pose_path in self.pose_paths:
+            with open(pose_path, "r") as f:
+                data = json.load(f)
+                
+                # 直接讀取 4x4 矩陣 (這是最原始、最不會錯的數據)
+                # 您的 v5.py 已經做了 .T 轉置，存成了 [[R, R, R, t]...]
+                # 所以這裡讀進來就是正確的 Column-Major
+                c2w = np.array(data["T_world_camera"], dtype=np.float32)
+                
+                self.poses.append(c2w)
+
+    # def load_poses_from_json(self):
+    #     """
+    #     從 pose_*.json 讀取位姿
+    #     使用 position + quaternion_xyzw 建立 c2w 矩陣 (Column-Major)
+    #     這能完美避開 v5.py 中矩陣轉置造成的混亂
+    #     """
+    #     self.poses = []
+
+    #     for pose_path in self.pose_paths:
+    #         with open(pose_path, "r") as f:
+    #             data = json.load(f)
+
+    #         # 1. 讀取位置 (Isaac Sim World Coordinates, Y-Up)
+    #         pos = np.array(data.get("position", [0.0, 0.0, 0.0]), dtype=np.float32)
+
+    #         # 2. 讀取四元數 (x, y, z, w)
+    #         q = data.get("quaternion_xyzw", [0.0, 0.0, 0.0, 1.0])
+    #         qx, qy, qz, qw = [float(v) for v in q]
+
+    #         # 3. 正規化四元數 (防止數值誤差)
+    #         norm = math.sqrt(qx*qx + qy*qy + qz*qz + qw*qw)
+    #         if norm > 0:
+    #             qx /= norm; qy /= norm; qz /= norm; qw /= norm
+
+    #         # 4. 四元數轉旋轉矩陣 (標準數學公式)
+    #         xx, yy, zz = qx*qx, qy*qy, qz*qz
+    #         xy, xz, yz = qx*qy, qx*qz, qy*qz
+    #         wx, wy, wz = qw*qx, qw*qy, qw*qz
+
+    #         R = np.array([
+    #             [1.0 - 2.0*(yy + zz), 2.0*(xy - wz),       2.0*(xz + wy)],
+    #             [2.0*(xy + wz),       1.0 - 2.0*(xx + zz), 2.0*(yz - wx)],
+    #             [2.0*(xz - wy),       2.0*(yz + wx),       1.0 - 2.0*(xx + yy)],
+    #         ], dtype=np.float32)
+
+    #         # 5. 組合成 4x4 矩陣 (Column-Major: R 在左上，t 在最後一欄)
+    #         c2w = np.eye(4, dtype=np.float32)
+    #         c2w[:3, :3] = R
+    #         c2w[:3, 3] = pos
+    #         self.poses.append(c2w)
+
+    def load_poses(self, path):
+        self.poses = []
+        with open(path, "r") as f:
+            lines = f.readlines()
+        for line in lines:
+            try:
+                nums = list(map(float, line.split()))
+                if len(nums) == 16:
+                    c2w = np.array(nums).reshape(4, 4)
+                    self.poses.append(c2w.astype(np.float32))
+            except ValueError:
+                continue
+
+    def __getitem__(self, index):
+        # 讀取影像
+        color_path = self.color_paths[index]
+        color_data = cv2.imread(str(color_path))
+        if color_data is None:
+            raise RuntimeError(f"Failed to read image: {color_path}")
+            
+        color_data = cv2.resize(color_data, (self.width, self.height), interpolation=cv2.INTER_LINEAR)
+        color_data = color_data.astype(np.uint8)
+        color_data = cv2.cvtColor(color_data, cv2.COLOR_BGR2RGB)
+        
+        # 讀取深度圖
+        if index < len(self.depth_paths):
+            depth_data = cv2.imread(str(self.depth_paths[index]), cv2.IMREAD_UNCHANGED)
+            if depth_data is not None:
+                depth_data = cv2.resize(depth_data.astype(float), (self.width, self.height), interpolation=cv2.INTER_NEAREST)
+                depth_data = depth_data.astype(np.float32) / self.depth_scale
+            else:
+                depth_data = np.zeros((self.height, self.width), dtype=np.float32)
+        else:
+            depth_data = np.zeros((self.height, self.width), dtype=np.float32)
+
+        # 確保 pose index 不會越界 (如果 json 數量少於圖片)
+        pose_idx = index if index < len(self.poses) else -1
+        pose = self.poses[pose_idx] if len(self.poses) > 0 else np.eye(4, dtype=np.float32)
+
+        return index, color_data, depth_data, pose
+
+
+
 def get_dataset(dataset_name: str):
     if dataset_name == "replica":
         return Replica
@@ -237,4 +397,6 @@ def get_dataset(dataset_name: str):
         return ScanNetPP
     elif dataset_name == 'matterport':
         return Matterport
+    elif dataset_name == 'custom':
+        return Custom
     raise NotImplementedError(f"Dataset {dataset_name} not implemented")
