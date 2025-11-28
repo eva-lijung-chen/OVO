@@ -1,3 +1,13 @@
+## 建&分割我們自己的場景
+```
+python run_wild_scene.py --scenes factory1 --run --segment
+```
+
+## 視覺化我們自己的場景(還要調整一下秀物體材質，現在只能秀分割)
+```
+python visualize_wild_scene.py data\output\custom\ovomapping\factory1 --visualize_obj --visualize_semantic --visualize_interactive_query
+```
+
 # Official repository of Open-Vocabulary Online Semantic Mapping for SLAM
 
 <a href="https://tberriel.github.io/">Tomas Berriel-Martins</a>,
