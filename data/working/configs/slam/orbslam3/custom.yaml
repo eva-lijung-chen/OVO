@@ -1,0 +1,74 @@
+%YAML:1.0
+
+# --- Camera Parameters ---
+File.version: "1.0"
+Camera.type: "PinHole"
+
+# === Group 1: Camera1 prefix (新版標準) ===
+Camera1.fx: 732.999
+Camera1.fy: 732.999
+Camera1.cx: 320.0
+Camera1.cy: 240.0
+Camera1.k1: 0.0
+Camera1.k2: 0.0
+Camera1.p1: 0.0
+Camera1.p2: 0.0
+Camera1.k3: 0.0
+
+# === Group 2: Camera prefix (舊版相容) ===
+Camera.fx: 732.999
+Camera.fy: 732.999
+Camera.cx: 320.0
+Camera.cy: 240.0
+Camera.k1: 0.0
+Camera.k2: 0.0
+Camera.p1: 0.0
+Camera.p2: 0.0
+Camera.k3: 0.0
+
+# === Global Settings ===
+Camera.width: 640
+Camera.height: 480
+Camera.fps: 5
+Camera.RGB: 1
+
+# === [關鍵修正區] 深度與立體參數 (一次補齊) ===
+
+# 1. 深度比例 (您算出的正確值 65535/10m)
+RGBD.DepthMapFactor: 6553.5
+DepthMapFactor: 6553.5
+
+# 2. 深度閾值 (解決 Stereo.ThDepth 報錯)
+# 這是定義多遠的點被視為「遠點」
+ThDepth: 40.0
+
+# Close/Far threshold. Baseline times.
+Stereo.ThDepth: 40.0
+Stereo.b: 0.0745
+
+# 3. 基線參數 (預防下一個報錯)
+# bf = baseline * fx (0.05m * 800 ~ 40.0)
+Camera.bf: 40.0
+
+# -----------------------------------------------------------------------------
+# ORB Parameters
+# -----------------------------------------------------------------------------
+ORBextractor.nFeatures: 800
+ORBextractor.scaleFactor: 1.2
+ORBextractor.nLevels: 8
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 7
+
+# -----------------------------------------------------------------------------
+# Viewer Parameters
+# -----------------------------------------------------------------------------
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1.0
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2.0
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3.0
+Viewer.ViewpointX: 0.0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -3.5
+Viewer.ViewpointF: 500.0

@@ -7,9 +7,10 @@ data:
 seed: 0
 slam:
   config_path: data/working/configs/slam
-  slam_module: vanilla #gaussian_slam #orbslam2 #
+  slam_module: vanilla #vanilla #gaussian_slam #orbslam2
   use_viewer: False # only used with orbslam2
-  close_loops: True # only used with orbslam2
+  close_loops: False # only used with orbslam2
+  save_estimated_cam: True
 vis:
   stream: False
   show_stream: False # this is going to be ignored if stream is false
@@ -30,6 +31,7 @@ semantic:
     sam_ckpt_path: "data/input/sam_ckpts/"
     sam_version: "2.1"
     sam_encoder: "hiera_l"
+    # sam_encoder: "hiera_t"
     masks_base_path: "data/working/masks/replica_384_sam2.1"
     #sam_version: "" # "" is 1, 
     #sam_encoder: "vit_h"

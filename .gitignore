@@ -1,4 +1,47 @@
-ovoslam/submodules/segment-anything-langsplat
-__pycache__
-*.ipynb
-data/
+# 忽略 Python 編譯檔
+__pycache__/
+*.py[cod]
+
+# 忽略虛擬環境
+.venv/
+env/
+venv/
+
+# 1. 先忽略 data/input 下的所有東西
+data/input/*
+
+# 2. 【例外】允許進入 Datasets 資料夾
+!data/input/Datasets/
+
+# 3. 忽略 Datasets 下的所有東西
+data/input/Datasets/*
+
+# 4. 【例外】允許進入 custom 資料夾
+!data/input/Datasets/custom/
+
+# 5. 忽略 custom 下的所有東西 (這就是您要的效果)
+data/input/Datasets/custom/*
+
+# 6. 【例外】保留 .gitkeep 檔案 (讓 Git 能追蹤到這個資料夾)
+!data/input/Datasets/custom/.gitkeep
+data/input/Datasets/Replica
+data/output
+
+# 忽略解壓後的巨大詞彙檔
+data/working/configs/slam/orbslam3/vocabulary/ORBvoc.txt
+
+# 但允許上傳壓縮檔
+!data/working/configs/slam/orbslam3/vocabulary/ORBvoc.txt.tar.gz
+
+# 忽略權重檔
+*.ckpt
+*.pth
+*.pt
+
+# 忽略 IDE 設定
+.vscode/
+.idea/
+
+# 忽略其他暫存檔
+wandb/
+*.log"data/working/configs/slam/orbslam3/vocabulary/ORBvoc.txt" 

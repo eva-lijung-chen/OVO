@@ -11,6 +11,9 @@ import threading
 import time
 import os
 
+import json
+import re
+
 from ..utils import vis_utils
 
 class Visualizer:
@@ -170,6 +173,77 @@ class Visualizer:
         n_objs = self.obj_masks.shape[0]
         sim_idxs = np.arange(n_objs)[sim_mask[:n_objs]]
 
+
+
+        # === [新增功能] 計算中心點、排序、取 Top 10 並存檔 ===
+        heat_map_flat = heat_map.flatten()
+        try:
+            all_points = self.cloud.point.positions.numpy()            
+            print(f"\n>>> Query: '{self.last_query}' (Threshold: {self.th})")
+            
+            # 1. 收集所有符合的物件資訊
+            found_objects = []
+            for idx in sim_idxs:
+                mask = self.obj_masks[idx]
+                if mask.shape[0] != all_points.shape[0]: continue
+                    
+                obj_points = all_points[mask]
+                if len(obj_points) > 0:
+                    centroid = np.mean(obj_points, axis=0)
+                    conf = float(heat_map_flat[idx])
+                    
+                    found_objects.append({
+                        "id": int(idx),
+                        "confidence": conf,
+                        "centroid": [float(c) for c in centroid]
+                    })
+            
+            # 2. 排序 (Confidence High -> Low)
+            found_objects.sort(key=lambda x: x["confidence"], reverse=True)
+            
+            # 3. 取 Top 10
+            top_10 = found_objects[:10]
+            
+            if not top_10:
+                print("  No objects found.")
+            else:
+                for obj in top_10:
+                    c = obj["centroid"]
+                    print(f"  [Obj {obj['id']}] Conf: {obj['confidence']:.2f} | Center: ({c[0]:.2f}, {c[1]:.2f}, {c[2]:.2f})")
+                
+                if len(found_objects) > 10:
+                    print(f"  ... and {len(found_objects) - 10} more hidden.")
+
+            # 4. 存檔 (JSON)
+            # 設定輸出路徑
+            output_dir = Path("data/output/custom/ovomapping")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 檔名包含查詢詞與時間戳記，避免覆蓋
+            # 清理查詢詞中的特殊符號，避免檔名錯誤
+            safe_query = re.sub(r'[\\/*?:"<>|]', "", self.last_query).replace(" ", "_")
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            json_filename = f"{timestamp}_query_{safe_query}.json"
+            json_path = output_dir / json_filename
+            
+            save_data = {
+                "query": self.last_query,
+                "timestamp": timestamp,
+                "threshold": self.th,
+                "top_10_results": top_10
+            }
+            
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(save_data, f, indent=4)
+                
+            print(f"Saved Top 10 results to: {json_path}")
+
+        except Exception as e:
+            print(f"Info: Processing/Saving failed ({e})")
+        # ========================================================
+
+
+
         with self.pcd_color_lock:
             new_pcd_colors = self.pcd_colors.copy()
             for i, idx in enumerate(sim_idxs):
@@ -177,6 +251,50 @@ class Visualizer:
 
             self.cloud.point.colors = new_pcd_colors        
             self.main_vis.update_geometry("pcd",self.cloud , 20)
+
+        # # =================================================================================
+        # # [Added Block] Calculate and Print Centroids
+        # try:
+        #     # 建立一個局部的扁平副本來讀取分數，解決 "unsupported format string" 錯誤
+        #     # 這不會改變原本的 heat_map
+        #     heat_map_flat = heat_map.flatten()
+            
+        #     # 取得點雲座標
+        #     all_points = self.cloud.point.positions.numpy()
+            
+        #     print(f"\n>>> Query: '{self.last_query}' (Threshold: {self.th})")
+            
+        #     if len(sim_idxs) == 0:
+        #         print("  No objects found.")
+        #     else:
+        #         count = 0
+        #         for idx in sim_idxs:
+        #             # 使用原始變數讀取遮罩
+        #             mask = self.obj_masks[idx]
+                    
+        #             # 安全檢查
+        #             if mask.shape[0] != all_points.shape[0]:
+        #                 continue
+                        
+        #             obj_points = all_points[mask]
+                    
+        #             if len(obj_points) > 0:
+        #                 # 計算中心點
+        #                 centroid = np.mean(obj_points, axis=0)
+                        
+        #                 # 從局部副本讀取分數，並強制轉為 float
+        #                 conf = float(heat_map_flat[idx])
+                        
+        #                 print(f"  [Obj {idx}] Conf: {conf:.2f} | Center: ({centroid[0]}, {centroid[1]}, {centroid[2]})")
+                        
+        #                 count += 1
+        #                 if count >= 10: # 避免洗版
+        #                     print(f"  ... and {len(sim_idxs) - 10} more.")
+        #                     break
+        # except Exception as e:
+        #     print(f"Info: Centroid calculation skipped ({e})")
+        # # =================================================================================
+
         self.main_vis.post_redraw()
         return False
 

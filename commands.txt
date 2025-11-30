@@ -1,0 +1,107 @@
+# On ASRLab server
+
+conda activate isaaclab
+cd /home/ubuntu/computer_vision/final
+
+git clone https://github.com/tberriel/OVO.git
+
+pip install torch==2.9.0 torchvision==0.24.0 --index-url https://download.pytorch.org/whl/cu128
+conda install pyyaml tqdm psutil wandb plyfile numpy=1.26.4 matplotlib seaborn opencv=4.11 imageio scipy scikit-learn pandas -c conda-forge -y
+pip install transformers==4.51.0 open_clip_torch==2.32.0 open3d==0.19.0 huggingface-hub==0.30.1
+
+
+
+#sam2
+cd OVO/thirdParty
+git clone https://github.com/facebookresearch/segment-anything.git
+cd segment-anything
+pip install -e .
+pip install sam2
+
+# optional dependencies
+pip install opencv-python pycocotools matplotlib onnxruntime onnx
+
+
+
+# ORB-SLAM3 (optional)
+cd ..
+git clone https://github.com/tberriel/ORB_SLAM3
+cd ORB_SLAM3
+
+# Instal conda C compilers to avoid relying on system defaults
+conda install cxx-compiler -c conda-forge -y
+
+# Install OpenGL
+conda install libegl libegl-devel libgl libgl-devel libgles libgles-devel libglvnd libglvnd-devel libglx libglx-devel libopengl libopengl-devel -c conda-forge -y
+
+# Install Eigen, Pangolin, OpenCV, Numpy
+conda install glew eigen=3.4 pangolin-opengl=0.9.2 libopencv=4.11 numpy=1.26.4 boost -c conda-forge -y
+
+./build.sh
+
+
+
+# CLIP
+cd /home/ubuntu/computer_vision/final/OVO/data/input/weights_predictor/base
+pip install gdown
+gdown https://drive.google.com/uc?id=186wZ2mLES_QjUjW8l2DmVmlWDpNl2fSY
+
+
+
+# Replica
+cd /home/ubuntu/computer_vision/final/OVO
+mkdir -p ./data/input/Datasets && cd ./data/input/Datasets/
+wget https://cvg-data.inf.ethz.ch/nice-slam/data/Replica.zip && unzip Replica.zip
+rm Replica.zip
+cd Replica
+ln -s /home/ubuntu/computer_vision/final/OVO/data/input/replica_semantic_gt/ semantic_gt
+
+
+
+# default datasets reconstruction / segment / visualization
+python run_eval.py --dataset_name Replica --experiment_name ovo_mapping --run --segment --eval --scenes office0
+python visualize_scene.py data/output/Replica/ovo_mapping/office0 --working_dir home/ubuntu/computer_vision/final/OVO --visualize_obj --visualize_interactive_query --visualize_gt_vs_pre
+
+
+
+# custom scenes
+
+python run_wild_scene.py --scenes factory2_max10m --run --segment
+
+python visualize_wild_scene.py data/output/custom/ovomapping/factory2_max10m --visualize_obj --visualize_interactive_query
+
+
+
+
+# On Eva's computer
+cd C:\ntu_csie\1141\cvpdl\final\OVO
+conda activate ovo
+
+cd /mnt/c/ntu_csie/1141/cvpdl/final/OVO
+conda activate ovo
+
+git clone https://github.com/tberriel/OVO.git
+
+conda create -n ovo python=3.10.13 -y
+conda activate ovo
+
+conda install pytorch==2.5.1 torchvision==0.20.1 pytorch-cuda=12.1 -c pytorch -c nvidia -y
+
+
+
+# custom scenes
+python run_wild_scene.py --scenes factory2_max10m --run --segment
+python visualize_wild_scene.py data\output\custom\ovomapping\factory2_max10m --visualize_obj --visualize_interactive_query
+
+
+
+
+
+
+
+
+
+
+
+
+
